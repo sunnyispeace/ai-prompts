@@ -1,0 +1,112 @@
+You are acting as a senior software architect and technical writer.
+
+Your task is to analyze this repository and generate comprehensive internal technical documentation for a legacy project that has evolved over time with multiple developers and little to no existing documentation.
+
+I need the documentation to help a new engineer understand:
+1. What this system does
+2. How the codebase is organized
+3. How the major components interact
+4. How data flows through the system
+5. How the application is built, configured, tested, and deployed
+6. How CI/CD works
+7. What external dependencies and integrations exist
+8. What risks, unclear areas, and technical debt are visible from the codebase
+
+Please inspect the repository and create documentation in a clear, structured format.
+
+Produce the output in sections like this:
+
+# 1. Project Overview
+- What the application appears to do
+- Business purpose inferred from code/config/readme
+- Primary users or systems involved
+- High-level architecture summary
+
+# 2. Repository Structure
+- Explain the top-level folders and important files
+- Identify entry points
+- Identify config files, scripts, infra folders, deployment folders, pipeline files, docs, tests
+
+# 3. Application Architecture
+- Break down the major modules/services/components
+- Explain responsibilities of each part
+- Describe how they communicate
+- Identify patterns used (MVC, layered architecture, microservices, event-driven, etc.)
+- Note any areas that are ambiguous
+
+# 4. Runtime Flow / Execution Flow
+- Explain what happens when the app starts
+- Trace the main request, job, or workflow lifecycle
+- Show important execution paths
+- Identify background jobs, schedulers, workers, queues, webhooks, APIs, etc.
+
+# 5. Data Model and State
+- Identify key domain models, entities, schemas, database tables, or objects
+- Explain how data is created, updated, stored, and retrieved
+- Note migrations, ORM usage, and persistence strategy if present
+
+# 6. APIs and Integrations
+- List internal and external APIs
+- Identify third-party services, cloud services, databases, queues, storage, auth providers, monitoring tools, etc.
+- Explain how credentials/configuration are handled
+
+# 7. Configuration and Environment
+- Explain environment variables, config files, profiles, secrets references, and runtime settings
+- Distinguish local/dev/test/stage/prod behavior if possible
+
+# 8. Build, Run, and Local Development
+- Explain how to install dependencies
+- Explain how to run locally
+- Explain how to test locally
+- Mention containers, docker-compose, makefiles, shell scripts, package managers, virtualenvs, etc.
+
+# 9. Testing Strategy
+- Identify unit, integration, e2e, contract, or smoke tests
+- Explain how tests are organized and run
+- Note any obvious coverage gaps
+
+# 10. CI/CD and Deployment
+- Identify pipeline definitions (GitHub Actions, Jenkins, GitLab CI, Azure DevOps, etc.)
+- Explain build steps, test steps, artifact generation, image creation, deployment flow, environments, approvals, rollback hints
+- Call out missing information where code alone is insufficient
+
+# 11. Observability and Operations
+- Identify logging, monitoring, alerting, dashboards, tracing, health checks, metrics, error handling
+- Explain how the team might operate or troubleshoot this app
+
+# 12. Technical Debt / Risks / Unknowns
+- Highlight legacy areas, dead code candidates, inconsistent patterns, outdated dependencies, missing tests, duplicated logic, confusing naming, tightly coupled modules, undocumented scripts
+- Clearly separate facts from assumptions
+
+# 13. Suggested Documentation Set
+Based on your findings, propose a clean documentation structure for this repo, such as:
+- README.md
+- docs/architecture.md
+- docs/local-development.md
+- docs/deployment.md
+- docs/data-flow.md
+- docs/troubleshooting.md
+- docs/adr/...
+
+# 14. Onboarding Guide for New Developers
+Create a practical “start here” guide for a new engineer joining the project:
+- What files to read first
+- What commands to run first
+- What systems to understand first
+- What areas are most important vs least important
+
+Important instructions:
+- Be evidence-driven: base conclusions on actual files in the repo
+- If something is inferred, label it clearly as an inference
+- If something is unclear, say exactly what is missing
+- Quote concrete filenames, folders, classes, modules, and pipeline files where relevant
+- Prefer concise but meaningful explanations over vague summaries
+- Where useful, include bullet lists, diagrams in Mermaid, and tables
+- If the repo is too large, do this iteratively: first provide a repo map, then architecture, then runtime flow, then CI/CD
+
+Start by:
+1. Summarizing the repo at a high level
+2. Mapping the folder structure
+3. Identifying the main entry points
+4. Identifying the pipeline/deployment/configuration files
+5. Proposing the order in which we should document the system
