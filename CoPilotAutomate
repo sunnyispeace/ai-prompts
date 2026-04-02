@@ -1,0 +1,242 @@
+# Power Automate workflow type decision matrix
+
+## Purpose
+
+This knowledge base helps users determine whether a workflow should be built as a **Power Automate cloud flow**, a **Power Automate desktop flow**, or a **hybrid** (cloud flow orchestrating a desktop flow). It also provides guidance on translating requirements into concrete workflow stages, actions, and connectors within the Microsoft 365 ecosystem.
+
+When a user describes a process they want to automate, use the decision criteria below to recommend a workflow type, then use the workflow patterns section to suggest specific stages and actions.
+
+---
+
+## Decision criteria
+
+Ask the user about their workflow requirements using the criteria below. Each criterion is labeled with an ID and a weight (1–3) indicating how strongly it signals one platform over the other. Higher weight = stronger signal.
+
+### Desktop flow indicators
+
+| ID | Criterion | Weight | When this applies |
+|----|-----------|--------|-------------------|
+| D1 | The process automates a legacy desktop application UI with no API or connector (SAP GUI, mainframe terminals, thick-client ERP, AS/400 emulators) | 3 | The target application has no web interface, no REST API, and no Power Automate connector. The only way to interact with it is by driving the UI — clicking, typing, navigating menus. |
+| D2 | The process drives a locally installed application that has no API, no connector, and no web interface — pure RPA screen interaction is the only option | 3 | Similar to D1 but for any locally installed software. If the application has a web UI or API, a cloud flow with a connector is the better path. |
+| D3 | The process requires triggering scanner or imaging hardware physically attached to a specific VDI or workstation | 2 | A physical scanner, barcode reader, or imaging device is plugged into a machine and the automation must trigger the scan and receive the output file. If documents are ingested upstream (scan-to-SharePoint, scan-to-email), a cloud flow handles it instead. |
+| D4 | The process scrapes or interacts with web applications that lack APIs and require browser-level RPA (clicks, form fills, navigation) | 2 | The web application has no API, no export function, and no connector. The only way to extract or input data is by automating browser interactions. |
+| D5 | The process must interact with command-line tools, batch scripts, or local PowerShell on a specific machine | 2 | The automation needs to run CLI commands, execute .bat/.ps1 scripts, or interact with terminal applications on a particular workstation or server. |
+| D6 | The process involves Windows authentication dialogs, credential prompts, or security modals that cannot be handled via SSO or service accounts | 2 | Windows security prompts appear during the process that require UI-level interaction to dismiss or authenticate through. |
+| D7 | Files live on an isolated machine not connected to the network — individual laptops or PCI/PII-segregated drives behind firewalls | 1 | The files are on a machine that cannot be reached via the On-Premises Data Gateway. Network-accessible drives (NAS, Azure Files, mapped network drives) are reachable via cloud flow + File System connector + gateway. |
+
+### Cloud flow indicators
+
+| ID | Criterion | Weight | When this applies |
+|----|-----------|--------|-------------------|
+| C1 | The process is triggered by Microsoft 365 events — new email, Teams message, SharePoint file upload, Planner task, Forms submission, Dataverse record change | 3 | The workflow starts when something happens in an M365 service. Cloud flows have native trigger connectors for all M365 services. |
+| C2 | The process coordinates actions across multiple M365 services (e.g., SharePoint → Teams → Outlook → Planner → Dataverse) | 3 | Data or actions need to flow between two or more Microsoft 365 services in sequence or parallel. |
+| C3 | The process requires approval workflows, multi-stage business process flows, or conditional routing based on user responses | 3 | One or more humans need to approve, reject, or route a request before the process continues. Cloud flows have built-in approval actions and business process flow support. |
+| C4 | Human-in-the-loop steps are handled via Power Apps forms, adaptive cards in Teams, or listening/signal flows that resume after user submission | 2 | A human needs to provide input, make a selection, or fill out a form as part of the workflow. Power Apps forms and Teams adaptive cards replace the need for desktop UI interaction when humans need to participate mid-workflow. |
+| C5 | The process integrates with third-party SaaS via REST APIs, custom connectors, or built-in Power Automate connectors | 2 | The workflow needs to read from or write to external systems like Salesforce, ServiceNow, SAP (via connector), Jira, DocuSign, Adobe Sign, or any system with a REST API. |
+| C6 | The process must run unattended on a schedule or recurrence without a logged-in user session | 2 | The workflow runs daily, weekly, or on a cron-like schedule with no human present to trigger it. Cloud flows support recurrence triggers natively. |
+| C7 | The process accesses network file shares, NAS drives, or Azure File Storage via On-Premises Data Gateway and File System connector | 2 | Files are on network-accessible storage. The On-Premises Data Gateway + File System connector allows cloud flows to read, write, and watch files on these shares without a desktop flow. |
+| C8 | The process uses AI Builder or Copilot Studio for document processing, form extraction, text classification, or entity recognition | 2 | The workflow involves AI-powered steps like extracting data from invoices, classifying emails, processing forms, or using GPT-based prompts. These are cloud-native capabilities. |
+| C9 | The process needs built-in error handling, retry policies, run history, and analytics across all executions | 2 | The team needs visibility into every run, the ability to configure retry on failure, and historical analytics. Cloud flows provide this in the Power Automate portal out of the box. |
+| C10 | The process requires solution-aware deployment across environments (dev → test → prod) with ALM and version control | 2 | The workflow will be promoted through environments using managed solutions, and needs to participate in the organization's ALM lifecycle. |
+| C11 | The process must scale across multiple users, departments, or geographies with shared ownership | 2 | The workflow serves a team, department, or organization — not a single user's workstation. Multiple people may own, edit, or monitor the flow. |
+| C12 | The process benefits from parallel branching — multiple actions running simultaneously to reduce total execution time | 1 | The workflow has independent steps that can run in parallel (e.g., send a notification AND update a record AND create a task at the same time). |
+
+---
+
+## Scoring logic
+
+1. For each criterion the user confirms applies, add its weight to the corresponding platform score (desktop or cloud).
+2. Compare the totals:
+   - If only desktop criteria are selected → **Desktop flow**
+   - If only cloud criteria are selected → **Cloud flow**
+   - If both desktop and cloud criteria are selected → **Hybrid** (cloud flow as orchestrator, desktop flow for local execution)
+   - If desktop score > 1.5× cloud score → **Strong desktop fit**
+   - If cloud score > 1.5× desktop score → **Strong cloud fit**
+   - If scores are close → **Hybrid recommended**
+
+### Important: the hybrid pattern
+
+When a process has both cloud triggers/orchestration needs AND desktop application interaction, the correct architecture is:
+
+- A **cloud flow** serves as the orchestrator — it handles triggers, approvals, M365 actions, and conditional logic.
+- The cloud flow invokes a **desktop flow** via the "Run a flow built with Power Automate for desktop" action for the specific steps that require local UI interaction.
+- The desktop flow runs on a registered machine (attended or unattended) and returns results to the cloud flow.
+
+This is not a fallback — it is the recommended pattern for any process that spans both cloud services and legacy desktop applications.
+
+---
+
+## Workflow patterns and stages
+
+Once the workflow type is determined, use the patterns below to help the user design their workflow stages. Each pattern includes the typical trigger, stages, and relevant Power Automate actions/connectors.
+
+### Cloud flow patterns
+
+#### Pattern: Event-driven document processing
+
+**Trigger:** When a file is created in a SharePoint document library
+
+**Stages:**
+
+1. **Trigger** — "When a file is created (properties only)" (SharePoint connector)
+2. **Extract metadata** — "Get file properties" (SharePoint connector) to read columns, content type, and metadata
+3. **Conditional routing** — "Condition" or "Switch" action to route based on file type, metadata value, or content type
+4. **Process content** — "Extract information from forms" (AI Builder) or "Get file content" (SharePoint) depending on processing needs
+5. **Update records** — "Create item" or "Update item" (SharePoint / Dataverse) to log results
+6. **Notify stakeholders** — "Post message in a chat or channel" (Teams) or "Send an email (V2)" (Outlook)
+
+#### Pattern: Multi-stage approval
+
+**Trigger:** When a new item is created in a SharePoint list or Dataverse table, or when a Microsoft Forms response is submitted
+
+**Stages:**
+
+1. **Trigger** — "When an item is created" (SharePoint) or "When a new response is submitted" (Forms)
+2. **Gather submission data** — "Get item" (SharePoint) or "Get response details" (Forms)
+3. **First-level approval** — "Start and wait for an approval" (Approvals connector), type: Approve/Reject - First to respond or Everyone must approve
+4. **Branch on outcome** — "Condition" checking approval outcome
+5. **If approved: escalate or finalize** — either another approval stage or "Update item" to set status to Approved
+6. **If rejected: notify and close** — "Send an email" or "Post adaptive card" with rejection reason, "Update item" to set status to Rejected
+7. **Final notification** — "Post message in a chat or channel" (Teams) summarizing the outcome
+
+#### Pattern: Scheduled data sync
+
+**Trigger:** Recurrence (daily, hourly, weekly)
+
+**Stages:**
+
+1. **Trigger** — "Recurrence" trigger with configured frequency
+2. **Fetch source data** — "HTTP" action or connector-specific "List items" / "Get rows" action against the source system
+3. **Transform data** — "Select" action to reshape, "Filter array" to subset, "Compose" to build payloads
+4. **Upsert to destination** — "Create item" or "Update item" (Dataverse / SharePoint) inside an "Apply to each" loop, or batch via HTTP if the destination supports it
+5. **Log results** — "Create item" in a run-log list with row counts, errors, and timestamps
+6. **Error notification** — "Configure run after" on a parallel branch set to run on failure, sending an alert email or Teams message
+
+#### Pattern: Human-in-the-loop with Power Apps
+
+**Trigger:** Cloud flow is triggered manually from a Power App or via a button in Teams
+
+**Stages:**
+
+1. **Trigger** — "PowerApps (V2)" trigger accepting input parameters from the app
+2. **Process initial request** — create record in Dataverse, upload file to SharePoint, or prepare data
+3. **Wait for human input** — use one of these approaches:
+   - **Adaptive card:** "Post adaptive card and wait for a response" (Teams) — the card includes form fields and action buttons
+   - **Signal flow:** the flow ends here and a second flow is triggered "When a Dataverse record is updated" after the user completes their action in a model-driven app
+   - **Power Apps form:** the flow pauses using a "Wait for approval" or custom polling pattern while the user fills out a canvas or model-driven app form
+4. **Resume and process** — read the human's input from the adaptive card response, Dataverse record, or approval outcome
+5. **Complete downstream actions** — update records, send notifications, trigger next stage
+
+#### Pattern: Cross-service orchestration
+
+**Trigger:** Varies — email received, Teams message, SharePoint event, manual button
+
+**Stages:**
+
+1. **Trigger** — appropriate M365 trigger
+2. **Enrich data** — "Get user profile (V2)" (Office 365 Users) to look up manager, department; "Get item" (SharePoint) for related records
+3. **Parallel actions** — use "Parallel branch" to simultaneously:
+   - Create a Planner task
+   - Send a Teams notification
+   - Update a SharePoint list item
+   - Log to Dataverse
+4. **Wait for completion** — if any branch involves approval or human action, use "Start and wait for an approval"
+5. **Aggregate and close** — "Compose" to merge results from parallel branches, "Update item" to finalize status
+
+### Desktop flow patterns
+
+#### Pattern: Legacy application data entry
+
+**Trigger:** Attended (user clicks Run) or unattended (invoked by a cloud flow)
+
+**Stages:**
+
+1. **Initialize** — read input data from Excel, CSV, or parameters passed from cloud flow
+2. **Launch application** — "Run application" action to open the desktop application
+3. **Authenticate** — "Populate text field" and "Click" actions to enter credentials and sign in, or "Send keys" for keyboard-based login
+4. **Navigate to target screen** — sequence of "Click" actions on menu items, tabs, or navigation elements using UI selectors
+5. **Enter data** — "Populate text field" for each field, "Set drop down list value" for dropdowns, "Click" for checkboxes/radio buttons
+6. **Submit and validate** — "Click" the save/submit button, "Wait for UI element" to confirm success message appears
+7. **Extract confirmation** — "Get details of a UI element" to read confirmation numbers or status text
+8. **Return results** — output variables passed back to the calling cloud flow (if hybrid) or written to an output file
+
+#### Pattern: Screen scraping and data extraction
+
+**Trigger:** Attended or unattended
+
+**Stages:**
+
+1. **Launch target application or browser** — "Run application" or "Launch new browser" (for web apps without APIs)
+2. **Navigate to data source** — "Click" and "Send keys" to reach the page or screen containing data
+3. **Extract data** — "Extract data from web page" (for web) or "Get details of a UI element" (for desktop apps); use "Extract data from table" for tabular data
+4. **Process extracted data** — "For each" loop over extracted rows, applying conditionals and transformations
+5. **Export results** — "Write to Excel worksheet" or "Write to CSV" to save extracted data
+6. **Close application** — "Close window" or "Close browser"
+
+#### Pattern: File processing on local machine
+
+**Trigger:** Attended (user-initiated) or scheduled via cloud flow
+
+**Stages:**
+
+1. **Read source files** — "Get files in folder" to list files, "Read text from file" or "Read from Excel worksheet" to read content
+2. **Process each file** — "For each" loop with file operations: rename, move, convert, parse
+3. **Interact with local software** — if processing requires a desktop application (e.g., opening in a legacy viewer, running a local executable), launch and drive the application
+4. **Write output** — "Write to file" or "Write to Excel" to create processed output
+5. **Upload results** — if hybrid, pass results back to cloud flow for SharePoint/Teams distribution; if standalone, move files to an output folder
+
+### Hybrid flow patterns
+
+#### Pattern: Cloud-triggered desktop execution
+
+**Architecture:** Cloud flow (orchestrator) → Desktop flow (executor) → Cloud flow (finalizer)
+
+**Stages:**
+
+1. **Cloud: Trigger** — M365 event trigger (email, SharePoint, Forms, Teams)
+2. **Cloud: Prepare inputs** — gather data, resolve lookups, build input payload for the desktop flow
+3. **Cloud: Invoke desktop flow** — "Run a flow built with Power Automate for desktop" action, passing input variables; select target machine and run mode (attended/unattended)
+4. **Desktop: Execute local steps** — the desktop flow runs its sequence (data entry, screen scraping, file processing) on the registered machine
+5. **Desktop: Return outputs** — desktop flow output variables are passed back to the cloud flow
+6. **Cloud: Process results** — read desktop flow outputs, update Dataverse/SharePoint, send notifications
+7. **Cloud: Handle errors** — "Configure run after" for desktop flow failure, alert the team, log the error
+
+---
+
+## Common Microsoft 365 connectors reference
+
+| Service | Connector name | Common triggers | Common actions |
+|---------|---------------|-----------------|----------------|
+| SharePoint | SharePoint | When a file is created, When an item is created/modified | Get items, Create item, Update item, Get file content, Create file |
+| Outlook | Office 365 Outlook | When a new email arrives (V3) | Send an email (V2), Get email (V2), Move email |
+| Teams | Microsoft Teams | When a new channel message is added | Post message in a chat or channel, Post adaptive card and wait for a response |
+| Forms | Microsoft Forms | When a new response is submitted | Get response details |
+| Planner | Planner | When a task is assigned to me | Create a task, Update a task, List tasks |
+| Dataverse | Microsoft Dataverse | When a row is added/modified/deleted | List rows, Get a row, Add a new row, Update a row |
+| OneDrive | OneDrive for Business | When a file is created/modified | Get file content, Create file, Copy file |
+| Excel Online | Excel Online (Business) | — | List rows, Add a row, Update a row, Get a row |
+| Power Apps | PowerApps (V2) | PowerApps (V2) trigger | Respond to a PowerApp or flow |
+| Approvals | Approvals | — | Start and wait for an approval, Create an approval |
+| File System | File System (gateway) | When a file is created in a folder | Get file content, Create file, List files in folder |
+| HTTP | HTTP | — | HTTP (for REST API calls to any endpoint) |
+| AI Builder | AI Builder | — | Extract information from forms, Categorize text, Analyze sentiment |
+
+---
+
+## Guidance for the agent
+
+When helping a user:
+
+1. **Start by understanding the process.** Ask the user to describe what happens today — what triggers it, what systems are involved, what the inputs and outputs are, and who is involved.
+
+2. **Map to decision criteria.** As the user describes their process, identify which criteria (D1–D7, C1–C12) apply. You do not need to ask about every criterion — only the ones relevant to what the user described.
+
+3. **Recommend a workflow type.** Based on the criteria that apply, recommend cloud flow, desktop flow, or hybrid. Explain why.
+
+4. **Suggest a workflow pattern.** Match the user's process to one of the patterns above, or combine patterns if the process is more complex. Lay out the stages in order.
+
+5. **Identify specific actions and connectors.** For each stage, suggest the specific Power Automate actions and connectors from the reference table. If the user's process involves a system not listed, suggest the HTTP connector for REST APIs or a custom connector.
+
+6. **Call out decisions the user needs to make.** Flag choices like attended vs. unattended, approval type (first to respond vs. everyone must approve), error handling strategy, and whether to use Dataverse or SharePoint for data storage.
+
+7. **Recommend the hybrid pattern proactively.** If the user describes a process that involves both cloud services and local application interaction, recommend the hybrid pattern immediately rather than waiting for them to ask.
